@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratoire Virtuel d'Optimisation - Master IARO</title>
+    <!-- Chargement de Tailwind CSS via CDN pour l'intégration rapide -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax pour l'affichage élégant des formules mathématiques -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/dist/solid.js"></script>
+    <script id="MathJax-script-2" async src="https://cdn.jsdelivr.net/npm/mathjax@3/dist/es5/tex-mml-chtml.js"></script>
+    <style>
+        /* Styles additionnels fins pour booktabs et graphiques */
+        .booktabs-table th {
+            border-top: 2px solid #1e293b;
+            border-bottom: 1.5px solid #1e293b;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .booktabs-table td {
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .booktabs-table tr:last-child td {
+            border-bottom: 2px solid #1e293b;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    <!-- EN-TÊTE ACADÉMIQUE PROFESSIONNEL -->
+    <header class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-xl">
+        <div class="max-w-7xl mx-auto px-6 py-6 md:py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <div class="flex items-center justify-center md:justify-start gap-3 mb-2">
+                    <span class="bg-indigo-600 text-white text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">Laboratoire Numérique</span>
+                    <span class="text-slate-400 text-sm">TD Optimisation</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Université Moulay Ismaïl</h1>
+                <p class="text-sm md:text-base text-slate-300 font-medium">Faculté des Sciences de Meknès — Master IARO (Informatique Appliquée à la Recherche Opérationnelle)</p>
+            </div>
+            <div class="border-t md:border-t-0 md:border-l border-slate-700/60 pt-4 md:pt-0 md:pl-8 text-center md:text-right">
+                <p class="text-xs uppercase tracking-widest text-indigo-400 font-semibold mb-1">Module</p>
+                <p class="text-base font-bold text-white">Optimisation Non-Bornée</p>
+                <p class="text-xs text-slate-400">Visualiseur Interactif des Méthodes de Descente</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        
+        <!-- SECTION 1 : DASHBOARD AVEC LES 4 CARDS DU TD -->
+        <section class="mb-10">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-2">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">1. Sélection d'une fonction d'étude (TD3 & TD4)</h2>
+                    <p class="text-sm text-slate-500">Sélectionnez l'une des fonctions prédéfinies issues de vos fiches de travaux dirigés pour l'analyser.</p>
+                </div>
+                <span class="text-xs bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-medium">Fiche de TD3 & TD4</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {% for fid, func in preloaded_functions.items %}
+                <div id="card-{{ fid }}" onclick="selectFunction('{{ fid }}', '{{ func.formula }}', {{ func.x0.0 }}, {{ func.x0.1 }})"
+                     class="cursor-pointer bg-white rounded-xl border border-slate-200 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-indigo-300 relative overflow-hidden group">
+                    <div class="absolute top-0 left-0 w-1.5 h-full bg-slate-300 group-hover:bg-indigo-500 transition-colors duration-200"></div>
+                    <div class="font-bold text-xs uppercase text-indigo-600 mb-1 flex justify-between items-center">
+                        <span>{{ func.td }}</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{{ func.title }}</span>
+                    </div>
+                    <div class="my-3 font-mono text-slate-900 font-bold bg-slate-50 p-2.5 rounded text-sm select-all">
+                        {{ func.formula }}
+                    </div>
+                    <div class="text-xs text-slate-500 mt-2 min-h-[40px]">
+                        {{ func.desc }}
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400 font-medium">
+                        <span>Point initial :</span>
+                        <span class="bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded">x0 = ({{ func.x0.0 }}, {{ func.x0.1 }})</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- FORMULAIRE DE CONFIGURATION PRINCIPAL -->
+        <form method="POST" action="." id="opt-form" class="space-y-8">
+            {% csrf_token %}
+            <input type="hidden" name="function_id" id="function_id_input" value="{{ selected_id }}">
+
+            <!-- SECTION 2 : SAISIE PERSONALISÉE -->
+            <section class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">2</span>
+                        Formule analytique de la fonction
+                    </h2>
+                    <button type="button" onclick="enableCustomFormula()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors">
+                        Saisir une fonction personnalisée
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-1">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Expression mathématique f(x1, x2)</label>
+                        <input type="text" id="formula_input" name="formula" value="{{ formula }}" required
+                               class="w-full font-mono bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold transition-all" />
+                        <p class="text-[11px] text-slate-400 mt-1">Utilisez les variables <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-mono">x1</code> et <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-mono">x2</code>, les puissances par <code class="bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded font-mono">**</code> (ou <code class="bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded font-mono">^</code>) et les fonctions <code class="font-mono text-[10px]">sin, cos, exp, ln</code>. Saisie sécurisée SymPy.</p>
+                    </div>
+
+                    <!-- Point initial x0 -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Point initial x0 (x1)</label>
+                            <input type="number" step="any" id="x0_x1_input" name="x0_x1" value="{{ x0_x1 }}" required
+                                   class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Point initial x0 (x2)</label>
+                            <input type="number" step="any" id="x0_x2_input" name="x0_x2" value="{{ x0_x2 }}" required
+                                   class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3 : PARAMÈTRES ET CONFIGURATION DE L'ALGORITHME -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Critères d'arrêt -->
+                <div class="bg-white rounded-xl border border-slate-205 p-6 shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-indigo-600 rounded-full"></span>Critères d'arrêt
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-500">Max itérations</label>
+                            <input type="number" name="max_iter" value="{{ max_iter }}" min="1" max="1000" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <p class="text-[10px] text-slate-400">Nombre maximum d'étapes (évite les boucles infinies).</p>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-500">Tolérance epsilon (||grad|| < eps)</label>
+                            <input type="number" step="any" name="epsilon" value="{{ epsilon }}" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <p class="text-[10px] text-slate-400">Seuil de tolérance sur la norme euclidienne du gradient (critère de premier ordre de stationnarité).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modèles Algorithmiques (Directions de recherche) -->
+                <div class="bg-white rounded-xl border border-slate-205 p-6 shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-indigo-600 rounded-full"></span>Direction de Descente (d_k)
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-500">Méthode selectionnée</label>
+                            <select name="direction_method" id="direction_method" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                <option value="gradient" {% if direction_method == 'gradient' %}selected{% endif %}>Gradient Descendant (Pente Forte)</option>
+                                <option value="newton" {% if direction_method == 'newton' %}selected{% endif %}>Méthode de Newton (Exacte 2nd ordre)</option>
+                                <option value="bfgs" {% if direction_method == 'bfgs' %}selected{% endif %}>BFGS (Quasi-Newton Secant)</option>
+                            </select>
+                            <p class="text-[10px] text-slate-400">Choix de la direction de recherche $d^k$. Gradient utilise le gradient négatif local, Newton intègre l'inverse de la Hessienne, BFGS l'approxime sans l'inverser.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stratégie de Pas (Line Search) -->
+                <div class="bg-white rounded-xl border border-slate-205 p-6 shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-indigo-600 rounded-full"></span>Recherche Linéaire (Pas \(\alpha_k\))
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-500">Choix du pas</label>
+                            <select name="step_method" id="step_method" onchange="toggleFixedAlphaField()" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                <option value="fixed" {% if step_method == 'fixed' %}selected{% endif %}>Pas Fixe (Manuel)</option>
+                                <option value="optimal" {% if step_method == 'optimal' %}selected{% endif %}>Pas Optimal Exact (Forme Quadratique)</option>
+                                <option value="armijo" {% if step_method == 'armijo' %}selected{% endif %}>Règle de Backtracking d'Armijo</option>
+                                <option value="wolfe" {% if step_method == 'wolfe' %}selected{% endif %}>Conditions de Wolfe (Sufficient Descent)</option>
+                            </select>
+                        </div>
+
+                        <!-- Champ Pas fixe (visibilité dynamique) -->
+                        <div id="fixed_alpha_container" class="space-y-1 {% if step_method != 'fixed' %}hidden{% endif %}">
+                            <label class="block text-xs font-semibold text-slate-500">Valeur du pas fixe (\(\alpha\))</label>
+                            <input type="number" step="any" name="fixed_alpha" value="{{ fixed_alpha }}" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
+                            <p class="text-[10px] text-slate-400">Si le pas est trop grand, l'algorithme divergera géométriquement par dépassement spectral.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- BOUTON DE SOUMISSION -->
+            <div class="flex justify-center">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-10 py-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-base flex items-center gap-2">
+                    Lancer le Laboratoire d'Optimisation Numérique
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </button>
+            </div>
+        </form>
+
+        <!-- ZONE DE CONCLUSIONS THEORIQUES FIXES (PÉDAGOGIQUE) -->
+        <section class="mt-8 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 p-6 shadow-lg">
+            <h2 class="text-base font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                Conclusions Théoriques de Recherche Opérationnelle
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-slate-300 leading-relaxed">
+                <div class="bg-slate-950/40 p-4 rounded-lg border border-slate-800/40">
+                    <p class="font-bold text-white mb-2 text-indigo-400">Sensibilité Spectrale & Gradient</p>
+                    <p>La vitesse de convergence du Gradient Descendant est fortement impactée par le conditionnement de la matrice Hessienne. Si le rapport des valeurs propres de la Hessienne \( \kappa = \frac{\lambda_{max}}{\lambda_{min}} \) est très élevé, la fonction présente un relief étiré en "ravin". Le gradient subira alors des **oscillations en zigzag** très inefficaces.</p>
+                </div>
+                <div class="bg-slate-950/40 p-4 rounded-lg border border-slate-800/40">
+                    <p class="font-bold text-white mb-2 text-indigo-400">Méthode de Newton vs Gradient</p>
+                    <p>La méthode de Newton résout ce problème en multipliant le gradient d'étape par l'inverse de la Hessienne \( H(x)^{-1} \). Cela modifie la métrique locale et déforme l'espace pour restaurer la symétrie. Sur une forme quadratique stricte avec pas optimal, **Newton converge en une seule et unique itération**, alors que le gradient nécessitera plusieurs dizaines d'étapes.</p>
+                </div>
+                <div class="bg-slate-950/40 p-4 rounded-lg border border-slate-800/40">
+                    <p class="font-bold text-white mb-2 text-indigo-400">Conditions de Wolfe & Stabilité du Pas</p>
+                    <p>Pour des fonctions générales non quadratiques, un pas fixe trop grand provoque immédiatement la **divergence géométrique** de l'algorithme (débordement de la norme vers l'infini). L'utilisation de conditions de Wolfe (Sufficient Decrease et condition de courbure) garantit la stabilité et la convergence globale de l'algorithme vers un minimum stationnaire.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CARTE DE CONVERGENCE ET DE RÉSULTAT DU BACKEND -->
+        {% if show_results %}
+        <section class="mt-12 space-y-8" id="results-section">
+            
+            <div class="border-t border-slate-200 pt-8">
+                <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Résultats de la Simulation Numérique</h2>
+                <p class="text-sm text-slate-500 mt-1">Données calculées en temps réel lors de l'exécution de la boucle d'optimisation.</p>
+            </div>
+
+            {% if error_message %}
+            <div class="bg-red-50 border-l-4 border-red-600 p-4 rounded-lg text-sm text-red-800">
+                <p class="font-bold">Une erreur est survenue :</p>
+                <p>{{ error_message }}</p>
+            </div>
+            {% else %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Graphique des contours Matplotlib -->
+                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm lg:col-span-5 flex flex-col justify-center items-center">
+                    <h3 class="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider text-center">Graphique des Lignes de Niveau & Trajectoire</h3>
+                    {% if chart_image %}
+                    <img src="{{ chart_image }}" alt="Lignes de contours et chemin de descente" class="max-w-full h-auto rounded border border-slate-100 shadow-sm" referrerPolicy="no-referrer">
+                    <p class="text-[11px] text-zinc-400 mt-2 text-center">Visualisation bidimensionnelle du cheminement reliant le point \(x^0\) jaune au point final d'évaluation rouge/vert.</p>
+                    {% else %}
+                    <div class="p-12 text-center text-slate-400">Hessienne non calculable ou graphique indisponible.</div>
+                    {% endif %}
+                </div>
+
+                <!-- Résumé succinct de convergence -->
+                <div class="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">État de Convergence global</h3>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-lg text-center">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Itérations Totales</span>
+                            <span class="text-2xl font-extrabold text-indigo-700 mt-1 block">{{ iterations|length|add:"-1" }}</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg text-center">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Minimum Trouvé f(x*)</span>
+                            <span class="text-lg font-extrabold text-slate-900 mt-1.5 block font-mono">
+                                {% with last_it=iterations|last %}
+                                    {{ last_it.f_x|floatformat:6 }}
+                                {% endwith %}
+                            </span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg text-center">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Point Final x*</span>
+                            <span class="text-xs font-bold text-emerald-700 mt-2 block font-mono">
+                                {% with last_it=iterations|last %}
+                                    ({{ last_it.x.0|floatformat:4 }}, {{ last_it.x.1|floatformat:4 }})
+                                {% endwith %}
+                            </span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg text-center">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Norme Gradient Final</span>
+                            <span class="text-xs font-bold text-slate-900 mt-2 block font-mono">
+                                {% with last_it=iterations|last %}
+                                    {{ last_it.grad_norm|floatformat:7 }}
+                                {% endwith %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Description finale de fin d'étude -->
+                    <div class="border-t border-slate-100 pt-4 text-xs text-slate-600 leading-relaxed bg-indigo-50/50 p-4 rounded-lg border border-indigo-100/60">
+                        <span class="font-bold text-indigo-900 block mb-1 uppercase tracking-widest text-[10px]">Observation Générale de l'Optimisation :</span>
+                        {% with last_it=iterations|last %}
+                            <strong>Conclusion de l'étape :</strong> {{ last_it.observation }}.
+                            {% if "Convergence" in last_it.observation %}
+                                <p class="mt-1">L'algorithme de descente a convergé avec succès vers un point stationnaire répondant au critère de premier ordre de Karush-Kuhn-Tucker. La tolérance de précision epsilon programmée de <code>{{ epsilon }}</code> est respectée.</p>
+                            {% elif "Divergence" in last_it.observation %}
+                                <p class="mt-1 text-red-700"><strong>Alerte Divergence :</strong> La trajectoire diverge géométriquement. Cela arrive généralement lorsque le pas fixe \(\alpha\) choisi est trop grand (dépassement spectral \( \alpha > 2/\lambda_{max} \)) ou qu'une anomalie s'est produite lors de la recherche du pas linéaire de descente.</p>
+                            {% else %}
+                                <p class="mt-1">L'algorithme a stoppé car les ressources de calculs maximales choisies ({{ max_iter }} itérations) ont été atteintes sans atteindre la tolérance sur la norme du gradient f(x).</p>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TABLEAU DE CONVERGENCE CONFORME AUX EXIGENCES EXPLICITES -->
+            <div class="bg-white rounded-xl border border-slate-205 shadow-sm overflow-hidden p-6">
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex justify-between items-center">
+                    <span>Tableau de convergence complet</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 font-normal px-2.5 py-1 rounded">Norme Booktabs Académique</span>
+                </h3>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs booktabs-table select-all font-mono">
+                        <thead>
+                            <tr class="bg-slate-50/40">
+                                <th class="py-3 px-3">k</th>
+                                <th class="py-3 px-3">x^k</th>
+                                <th class="py-3 px-3">f(x^k)</th>
+                                <th class="py-3 px-3">Grad f(x^k)</th>
+                                <th class="py-3 px-3">d^k</th>
+                                <th class="py-3 px-3">alpha^k</th>
+                                <th class="py-3 px-3">||d^k||</th>
+                                <th class="py-3 px-3">||x^{k+1} - x^k||</th>
+                                <th class="py-3 px-3">||Grad f(x^k)||</th>
+                                <th class="py-3 px-3 font-sans font-semibold">Observation</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for it in iterations %}
+                            <tr class="hover:bg-slate-50/70 transition-colors duration-150">
+                                <td class="py-3 px-3 font-semibold text-slate-900">{{ it.k }}</td>
+                                <td class="py-3 px-3 text-indigo-900">({{ it.x.0|floatformat:4 }}, {{ it.x.1|floatformat:4 }})</td>
+                                <td class="py-3 px-3 font-medium text-slate-900">{{ it.f_x|floatformat:6 }}</td>
+                                <td class="py-3 px-3 text-slate-500">({{ it.grad.0|floatformat:4 }}, {{ it.grad.1|floatformat:4 }})</td>
+                                <td class="py-3 px-3 text-slate-500">({{ it.d.0|floatformat:4 }}, {{ it.d.1|floatformat:4 }})</td>
+                                <td class="py-3 px-3 font-semibold text-emerald-800">{{ it.alpha|floatformat:6 }}</td>
+                                <td class="py-3 px-3 text-slate-500">{{ it.d_norm|floatformat:6 }}</td>
+                                <td class="py-3 px-3 text-slate-500">{{ it.step_norm|floatformat:6 }}</td>
+                                <td class="py-3 px-3 font-semibold text-slate-900">{{ it.grad_norm|floatformat:6 }}</td>
+                                <td class="py-3 px-3 font-sans font-medium text-slate-700">{{ it.observation }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% endif %}
+
+        </section>
+        {% endif %}
+
+    </main>
+
+    <!-- PIED DE PAGE -->
+    <footer class="mt-20 border-t border-slate-205 bg-white py-8 text-center text-xs text-slate-400 font-medium">
+        <p>© 2026 Université Moulay Ismaïl — Faculté des Sciences de Meknès — Master IARO.</p>
+        <p class="mt-1.5 text-slate-300">Laboratoire Virtuel de Recherche Opérationnelle créé par AI Studio Build.</p>
+    </footer>
+
+    <!-- LOGIQUE JAVASCRIPT DIRECTE DU TEMPLATE POUR METTRE À JOUR LES CONFIGS -->
+    <script>
+        function selectFunction(id, formula, x0, x1) {
+            // Mise à jour de l'ID sélectionné
+            document.getElementById('function_id_input').value = id;
+            document.getElementById('formula_input').value = formula;
+            document.getElementById('x0_x1_input').value = x0;
+            document.getElementById('x0_x2_input').value = x1;
+
+            // Retirer et ajouter les classes de style actives sur les cartes
+            document.querySelectorAll('[id^="card-"]').forEach(card => {
+                card.classList.remove('border-indigo-600', 'ring-2', 'ring-indigo-100', 'shadow-md');
+                card.classList.add('border-slate-200', 'shadow-sm');
+                // Retirer le badge de surlignage orange
+                const marker = card.querySelector('.absolute');
+                if (marker) marker.classList.replace('bg-indigo-600', 'bg-slate-300');
+            });
+
+            const activeCard = document.getElementById('card-' + id);
+            if (activeCard) {
+                activeCard.classList.remove('border-slate-200', 'shadow-sm');
+                activeCard.classList.add('border-indigo-600', 'ring-2', 'ring-indigo-100', 'shadow-md');
+                // Colorer le marker latéral
+                const marker = activeCard.querySelector('.absolute');
+                if (marker) marker.classList.replace('bg-slate-300', 'bg-indigo-600');
+            }
+        }
+
+        function enableCustomFormula() {
+            document.getElementById('function_id_input').value = 'custom';
+            const formulaInput = document.getElementById('formula_input');
+            formulaInput.focus();
+            
+            // Retirer la sélection active des cartes prédéfinies
+            document.querySelectorAll('[id^="card-"]').forEach(card => {
+                card.classList.remove('border-indigo-600', 'ring-2', 'ring-indigo-100', 'shadow-md');
+                card.classList.add('border-slate-200', 'shadow-sm');
+                const marker = card.querySelector('.absolute');
+                if (marker) marker.classList.replace('bg-indigo-600', 'bg-slate-300');
+            });
+        }
+
+        function toggleFixedAlphaField() {
+            const stepMethod = document.getElementById('step_method').value;
+            const container = document.getElementById('fixed_alpha_container');
+            if (stepMethod === 'fixed') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        // Configuration initiale au chargement
+        window.addEventListener('load', () => {
+            const startId = "{{ selected_id }}";
+            if (startId && startId !== 'custom') {
+                const startCard = document.getElementById('card-' + startId);
+                if (startCard) {
+                    startCard.classList.remove('border-slate-200', 'shadow-sm');
+                    startCard.classList.add('border-indigo-600', 'ring-2', 'ring-indigo-100', 'shadow-md');
+                    const marker = startCard.querySelector('.absolute');
+                    if (marker) marker.classList.replace('bg-slate-300', 'bg-indigo-600');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

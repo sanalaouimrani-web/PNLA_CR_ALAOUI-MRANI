@@ -1,0 +1,8 @@
+{
+  "name": "TP_NLP_TD3-TD4_06-26",
+  "description": "Laboratoire virtuel interactif pour visualiser les méthodes de descente (Gradient, Newton, BFGS) avec pas fixe ou dynamique (Armijo, Wolfe). Conforme aux TD du Master IARO de l\u0027Université Moulay Ismaïl.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
