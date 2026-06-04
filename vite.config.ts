@@ -5,6 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: '/PNLA_CR_ALAOUI-MRANI/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
